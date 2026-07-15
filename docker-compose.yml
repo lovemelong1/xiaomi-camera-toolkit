@@ -1,0 +1,20 @@
+services:
+  xiaomi-camera-toolkit:
+    build: .
+    container_name: xiaomi-camera-toolkit
+    restart: unless-stopped
+    environment:
+      INPUT_DIR: /data/input
+      OUTPUT_DIR: /data/output
+      MODE: timelapse
+      RUN_MODE: scheduler
+      SCHEDULE_TIME: "03:00"
+      INTERVAL_DAYS: "1"
+      FRAMES: "30"
+      FPS: "3"
+      WIDTH: "1280"
+      DELETE_SOURCE: "true"
+      KEEP_DAYS: "15"
+    volumes:
+      - /volume3/16TB/xiaomi_camera_videos:/data/input
+      - /volume3/16TB/合并小米录像:/data/output
