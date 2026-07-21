@@ -27,6 +27,8 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--run-mode", choices=["once", "scheduler"], default=os.getenv("RUN_MODE", "once"))
     p.add_argument("--schedule-time", default=os.getenv("SCHEDULE_TIME", "03:00"))
     p.add_argument("--interval-days", type=int, default=int(os.getenv("INTERVAL_DAYS", "1")))
+    p.add_argument("--target-day", default=os.getenv("TARGET_DAY"))
+    p.add_argument("--target-lag-days", type=int, default=int(os.getenv("TARGET_LAG_DAYS", "1")))
     p.add_argument("--frames", type=int, default=int(os.getenv("FRAMES", "30")))
     p.add_argument("--fps", type=int, default=int(os.getenv("FPS", "3")))
     p.add_argument("--width", type=int, default=int(os.getenv("WIDTH", "1280")))
@@ -44,10 +46,27 @@ def run_once(args: argparse.Namespace) -> int:
     output_root = Path(args.output)
     segments = scan_segments(input_root)
     grouped = group_by_day(segments)
-    print(f"found {len(segments)} segments in {len(grouped)} days", flush=True)
+    all_days = list(grouped)
+    target_day_label = args.target_day
+    if args.target_day:
+        process_days = [args.target_day] if args.target_day in grouped else []
+    elif args.run_mode == "scheduler":
+        target_day_label = (datetime.now() - timedelta(days=args.target_lag_days)).strftime("%Y%m%d")
+        process_days = [target_day_label] if target_day_label in grouped else []
+    else:
+        process_days = all_days
+
+    print(
+        f"found {len(segments)} segments in {len(grouped)} days; "
+        f"target_day={target_day_label or 'all'} process_days={len(process_days)}",
+        flush=True,
+    )
+    if target_day_label and not process_days:
+        print(f"no source files for target_day={target_day_label}", flush=True)
 
     success_days: set[str] = set()
-    for day, day_segments in grouped.items():
+    for day in process_days:
+        day_segments = grouped[day]
         ok = True
         if args.mode in {"timelapse", "both"}:
             ok = build_timelapse(
@@ -72,8 +91,15 @@ def run_once(args: argparse.Namespace) -> int:
             ) is not None and ok
         if ok:
             success_days.add(day)
-            if args.delete_source and can_delete_day(day, args.keep_days):
-                count = delete_sources(day_segments, dry_run=args.dry_run)
+    cleanup_days = set(success_days)
+    if args.delete_source:
+        for day in all_days:
+            output = output_root / "延时摄影" / day[:6] / f"{day}.mp4"
+            if can_delete_day(day, args.keep_days) and output.exists():
+                cleanup_days.add(day)
+        for day in sorted(cleanup_days):
+            if can_delete_day(day, args.keep_days):
+                count = delete_sources(grouped[day], dry_run=args.dry_run)
                 print(f"deleted {count} source files for {day}", flush=True)
 
     if args.delete_source and args.delete_empty_dirs:
