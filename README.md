@@ -96,6 +96,8 @@ docker compose up -d --build
 
 `docker-compose.yml` 默认每天 03:00 运行一次，生成延时摄影，并在某天输出成功后删除 15 天以前的源文件。
 
+常驻模式默认只处理前一天。例如 2026-07-21 03:00 运行时，只会处理 2026-07-20，不会继续往前补 2026-07-19。
+
 查看日志：
 
 ```bash
@@ -118,6 +120,8 @@ docker compose down
 | `RUN_MODE` | `once` | `once` 跑一次，`scheduler` 常驻定时 |
 | `SCHEDULE_TIME` | `03:00` | 常驻模式每天运行时间 |
 | `INTERVAL_DAYS` | `1` | 常驻模式运行间隔天数 |
+| `TARGET_DAY` | 空 | 手动指定处理日期，格式 `YYYYMMDD` |
+| `TARGET_LAG_DAYS` | `1` | 常驻模式处理几天前，默认 `1` 表示前一天 |
 | `FRAMES` | `30` | 每天延时摄影抽帧数，`30/FPS=10秒` |
 | `FPS` | `3` | 延时摄影帧率 |
 | `WIDTH` | `1280` | 输出视频宽度 |
